@@ -6,7 +6,8 @@ import ReactDOM from 'react-dom';
 import { Meteor } from 'meteor/meteor';
 import { createContainer } from 'meteor/react-meteor-data';
 
-//这个，没有载入也不报错，Tasks根本就是个空么。
+//这个，没有载入也不报错，Tasks根本就是个空么, 和Task.jsx里面一样，也只是为了
+//载入Tasks这个实例类，其它的并没有使用。
 import { Tasks } from  '../api/tasks.js';
 //这又要载入一个任务UI
 // import Task from './Task.jsx';
@@ -14,6 +15,8 @@ import { Tasks } from  '../api/tasks.js';
 import Task from './Task.jsx';
 import AccountsWrapper from './AccountsWrapper.jsx';
 
+
+// Meteor.subscribe('tasks');
 // export default class App extends Component{
 	//上面的export default看来是提供给其它类使用了
 	//如此这儿的类只供这个文件内使用？
@@ -29,12 +32,15 @@ class App extends Component{
 		//原来这个Refs还不能乱起名称，得用复数，而在render中使用单数，这坑，还好我是自己打的。
 		//相比blaze, 这种办法可也真是够复杂，不过facebook弄出来的玩意儿，还是有道理吧
 		const text = ReactDOM.findDOMNode(this.refs.textInput).value.trim();
-		Tasks.insert({
-			text,
-			createdAt: new Date(),
-			owner: Meteor.userId(),
-			username: Meteor.user().username,
-		});
+		//以下的办法只适用于有insecure的时候，一切都是安全的！
+		// Tasks.insert({
+		// 	text,
+		// 	createdAt: new Date(),
+		// 	owner: Meteor.userId(),
+		// 	username: Meteor.user().username,
+		// });
+		Meteor.call('tasks.insert', text);
+
 		ReactDOM.findDOMNode(this.refs.textInput).value='';
 	}
 	toggleHideCompleted(){
@@ -56,9 +62,18 @@ class App extends Component{
 				// 这也是学习了Meta programming之后才有的启发！因为太像labmda了，包括C#也是类似的写法
 				// filteredTasks= filteredTasks.filter(task=>/ok/.test(task.text));
 			};
-			return filteredTasks.map((item)=>(
-				<Task key={item._id} task={item} />
-			));
+			return filteredTasks.map((item)=>{
+				const currentUserId= this.props.currentUser && this.props.currentUser._id;
+				const showPrivateButton= item.owner === currentUserId;
+				return(
+					<Task
+						key={item._id}
+						task={item}
+						showPrivateButton={showPrivateButton}
+					/>
+
+				);
+			});
 	}
 	render(){
 		return(
@@ -66,6 +81,7 @@ class App extends Component{
 				<header>
 					<h1>Todo列表 ({this.props.incompleteCount})</h1>
 					<label className="hide-completed">
+						过滤已经完成的
 						<input 
 							type="checkbox"
 							readOnly
@@ -94,6 +110,7 @@ class App extends Component{
 
 App.propTypes = {
   tasks: 			PropTypes.array.isRequired,
+  showPrivateButton: React.PropTypes.bool.isRequired,
   incompleteCount: 	PropTypes.number.isRequired,
   currentUser: 		PropTypes.object,
 };
@@ -102,6 +119,9 @@ App.propTypes = {
  //这样todos的总数就会自动在界面中更新了，因为数据变化了！你界面里面要展现的就是这个变化的数据，所以这比jQuery
  //手动去改变值要方便的多！
 export default createContainer(() => {
+	//还不太明白为啥要在这儿订阅？试了下，放在最前面也是可行的，代码没有问题。
+	Meteor.subscribe('tasks');
+
   return {
     tasks: Tasks.find({},{sort:{createdAt: -1} }).fetch(),
     incompleteCount: Tasks.find({checked:{$ne:true} }).count(),

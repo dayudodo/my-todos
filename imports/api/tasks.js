@@ -8,15 +8,25 @@ export const Tasks = new Mongo.Collection('tasks');
 
 //因为代码为被client引用，所以需要加上判断，这些共用代码就会有这些问题。
 if (Meteor.isServer) {
-	Meteor.publish('tasks', ()=>{
+	// Meteor.publish('tasks', function tasksPublication(){
+	// 	return Tasks.find({
+	// 		$or: [
+	// 			{ private: {$ne: true} }, //加个private，就不会再返回了。
+	// 			{ owner: this.userId },
+	// 		]
+	// 	});
+	// })
+
+	//如此看来，函数名称还是有作用的？或者说lambda与正常的函数有所区别!名称上是没有关系的
+	//或者名称不要也能正常工作，就是()=>不行。或者说用传统的匿名函数兼容性更好。
+	Meteor.publish('tasks', function(){
 		return Tasks.find({
 			$or: [
-				{private: {$ne: true}},
-				{owner: this.userId},
-			]
-		});
+				{ private: {$ne: true} }, //加个private，就不会再返回了。
+				{ owner: this.userId },
+			]});
 	})
-};
+}	
 
 Meteor.methods({
 	'tasks.insert'(text){

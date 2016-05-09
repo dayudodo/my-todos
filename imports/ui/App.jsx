@@ -71,7 +71,6 @@ class App extends Component{
 						task={item}
 						showPrivateButton={showPrivateButton}
 					/>
-
 				);
 			});
 	}
